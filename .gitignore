@@ -5,6 +5,7 @@ dist-ssr
 __pycache__/
 package-lock.json
 *.env
+uploads/
 
 # Editor directories and files
 .vscode/*

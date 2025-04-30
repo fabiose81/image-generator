@@ -3,7 +3,7 @@ import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import Button from 'react-bootstrap/Button';
 import Image from 'react-bootstrap/Image';
-import './AudioGen.css'
+import '../dist/style.css'
 
 const AudioGen = (props) => {
 
@@ -15,7 +15,7 @@ const AudioGen = (props) => {
     const record = () => {
         props.obj.ToggleMic();
         setImage({
-            src: !image.recording ? "stop-button.png" :  "voice.png",
+            src: !image.recording ? "stop-button.png" : "voice.png",
             recording: !image.recording
         })  
     }
@@ -27,7 +27,7 @@ const AudioGen = (props) => {
                     <Button className="button" onClick={record}>
                         <Image src={image.src} style={{ width: "48px", height: "48px" }} ></Image>
                     </Button>
-                    <Image className="blink" src="botao-rec.png" style={{ width: "41px", height: "41px" }} hidden={!image.recording}></Image>
+                    <Image className="blink-audio" src="botao-rec.png" style={{ width: "41px", height: "41px" }} hidden={!image.recording}></Image>
                 </Col>
             </Row>
             <Row>

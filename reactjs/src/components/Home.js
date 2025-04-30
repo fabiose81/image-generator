@@ -10,7 +10,7 @@ import { AIService } from '../services/AIService'
 import { Audio } from '../utils/Audio'
 import ImageGen from './ImageGen'
 import AudioGen from './AudioGen'
-import './Home.css'
+import '../dist/style.css'
 
 const Home = () => {
 
@@ -173,7 +173,7 @@ const Home = () => {
                 <Modal.Body style={{ height: "205px" }}>
                     <div style={{ height: '200px' }}>
                         <div className="loader"></div>
-                        <div className="blink" style={{ textAlign: "center", fontFamily: "Verdana" }}>
+                        <div className="blink-text" style={{ textAlign: "center", fontFamily: "Verdana" }}>
                             Generating image...
                         </div>
                     </div>
