@@ -19,5 +19,4 @@ class Image:
             )
         except Exception as e:
             raise Exception(e)
-
         return response.data[0].url

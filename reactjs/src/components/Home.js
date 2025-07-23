@@ -6,7 +6,7 @@ import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import Image from 'react-bootstrap/Image';
 import Alert from 'react-bootstrap/Alert';
-import { AIService } from '../services/AIService'
+import { generateImageByAudio, generateImageByText, s3 } from '../services/Request'
 import { Audio } from '../utils/Audio'
 import ImageGen from './ImageGen'
 import AudioGen from './AudioGen'
@@ -15,9 +15,13 @@ import '../dist/style.css'
 const Home = () => {
 
     const [showModal, setShowModal] = useState(false);
+    const [msgModal, setMsgModal] = useState('');
     const [audioSetup, setupAudioSetup] = useState(false);
     const [prompt, setPrompt] = useState('');
-    const [msgAlert, setMsgAlert] = useState('');
+    const [msgAlert, setMsgAlert] = useState({
+        label: '',
+        status: ''
+    });
     const [audioObj] = useState(new Audio());
 
     const [image, setImage] = useState({
@@ -33,66 +37,90 @@ const Home = () => {
         hidden: true
     });
 
+    const changeAlertState = (status, label) => {
+        return {
+            status: status,
+            label: label
+        }
+    }
+
+    const uploadToS3 = () => {
+        setMsgModal('Uploading image to S3...')
+        setShowModal(true)
+       
+        const date = Date.now();
+        const name = !text.hidden ? 'image_by_text_' + date + '.jpg' : 'image_by_audio_' + date + '.jpg'
+        const payload = {
+            name: name,
+            data: image.src
+        }
+
+        s3(payload)
+            .then(() => {
+                setMsgAlert(() => changeAlertState('success', 'Image uploaded to S3'));
+            })
+            .catch((error) => {
+                setMsgAlert(() => changeAlertState('danger', error));
+            })
+            .finally(() => {
+                setShowModal(false);
+            })
+    }
+
     const generate = () => {
         if (!validate()) {
-            setMsgAlert('Fill prompt or record an audio!')
+            setMsgAlert(() => changeAlertState('warning', 'Fill prompt or record an audio!'));
             return;
         }
 
+        setMsgModal('Generating image...')
         setShowModal(true)
-        setMsgAlert('')
 
-        AIService(params())
-            .then(result => {
-                setImage({
-                    src: result.image_url,
-                    hidden: false
+        if (!text.hidden) {
+            generateImageByText({ data: prompt })
+                .then(result => {
+                    setImage({
+                        src: result.image_url,
+                        hidden: false
+                    })
                 })
-                if (text.hidden) {
+                .catch((error) => {
+                    setMsgAlert(() => changeAlertState('danger', error));
+                })
+                .finally(() => {
+                    setShowModal(false);
+                })
+        } else {
+            const formData = new FormData();
+            const fileName = 'audio_' + Date.now() + '.webm';
+            formData.append('file', audioObj.blob, fileName);
+
+            generateImageByAudio(formData)
+                .then(result => {
+                    setImage({
+                        src: result.image_url,
+                        hidden: false
+                    })
                     audioObj.transcriptionAudio.value = 'Transcription :: '.concat(result.transcription)
                     audioObj.transcriptionAudio.hidden = false;
-                }
-                setShowModal(false)
-            }).catch((error) => {
-                setMsgAlert(error);
-            });
+                })
+                .catch((error) => {
+                    setMsgAlert(() => changeAlertState('danger', error));
+                })
+                .finally(() => {
+                    setShowModal(false);
+                })
+        }
     }
 
     const validate = () => {
         if (!text.hidden && prompt.trim().length === 0)
             return false;
-      
+
         if (text.hidden && audioObj.blob === null)
             return false;
-  
+
         return true;
-    }
-
-    const params = () => {
-        let data;
-        let service;
-        let contentType;
-
-        if (!text.hidden) {
-            data = {
-                data: prompt
-            };
-            service = 'image';
-            contentType = 'application/json';
-        } else {
-            const formData = new FormData();
-            const fileName = 'audio_' + Date.now() + '.webm';
-            formData.append('file', audioObj.blob, fileName);
-            data = formData;
-            service = 'audio';
-            contentType = 'application/octet-stream';
-        }
-
-        return {
-            data: data,
-            service: service,
-            contentType: contentType
-        };
     }
 
     const clear = () => {
@@ -105,7 +133,7 @@ const Home = () => {
             src: null,
             hidden: true
         })
-        setMsgAlert('')
+        setMsgAlert(() => changeAlertState('', ''));
     }
 
     return (
@@ -138,8 +166,8 @@ const Home = () => {
 
             <Row className="row">
                 <Col className="col">
-                    <Alert variant='danger' hidden={msgAlert.length === 0}>
-                        {msgAlert}
+                    <Alert variant={msgAlert.status} hidden={msgAlert.label.length === 0}>
+                        {msgAlert.label}
                     </Alert>
                 </Col>
             </Row>
@@ -163,18 +191,23 @@ const Home = () => {
                     <Button className="btn-primary btn" style={{ width: "250px", fontFamily: "Verdana" }} onClick={generate}>Generate</Button><br />
                 </Col>
             </Row>
+            <Row>
+                <Col className="col">
+                    <Button className="btn-primary btn" style={{ width: "250px", fontFamily: "Verdana" }} hidden={image.hidden} onClick={uploadToS3}>Save in bucket S3</Button>
+                </Col>
+            </Row>
             <Row className="row">
                 <Col className="col">
                     <Image className="rounded img-fluid" src={image.src} hidden={image.hidden} style={{ width: "720px", height: "720px" }} alt="..."></Image>
                 </Col>
-            </Row>
+            </Row> 
 
             <Modal show={showModal} centered>
                 <Modal.Body style={{ height: "205px" }}>
                     <div style={{ height: '200px' }}>
                         <div className="loader"></div>
                         <div className="blink-text" style={{ textAlign: "center", fontFamily: "Verdana" }}>
-                            Generating image...
+                            {msgModal}
                         </div>
                     </div>
                 </Modal.Body>
